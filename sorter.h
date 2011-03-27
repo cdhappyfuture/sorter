@@ -3,23 +3,39 @@
 #include <vector>
 #include <ExcelFormat.h>
 
-struct Range
-{
-    int Cb, Ce;
-    int Db, De;
-    int Kb, Ke;
-    int Eb, Ee;
-    int Fb, Fe;
-    int GHb, GHe;
-    int ILb, ILe;
-    int MPb, MPe;
-    int QTb, QTe;
-};
 
 struct Row
-{
-    int H;//жду ответа от Ксении
+{                       //Структура "строка" нужных нам данных из цветного файла
+    // те что были
+    char*  date;        //  дата стоит перед блоками записей, но нужно при заполнении
+                        //  вектора строк в каждую запись добавлять дату
+    char*  b_time;      // начало диапазона
+    char*  e_time;      // конец диапазона
+    double  C;          // обводненность % ваще оно целое, но для удобства сделал все дабл
+    double  D;          // Расход жидкости (режимная карта), [м3/сут]
+    double  K;          // Расход газа     (RVG), [м3/сут]
+    // 6 добавленных средних
+    double  E;          // Температура
+    double  F;          //  давление
+    double  GH;         // обводненность OW
+    double  IL;         // частота Доплера
+    double  MP;         // газонасыщенность
+    double  QT;         // загадочный N
 };
+
+struct Range            // Диапазон значений для выборки из цветного файла
+{                       // Заполняется из GUI, передается методу Sorter::fill_it(Range* range)
+    double  Cb, Ce;
+    double  Db, De;
+    double  Kb, Ke;
+    double  Eb, Ee;
+    double  Fb, Fe;
+    double  GHb, GHe;
+    double  ILb, ILe;
+    double  MPb, MPe;
+    double  QTb, QTe;
+};
+
 class Error
 {
     char* mess;
@@ -29,6 +45,7 @@ public:
     ~Error();
     text();
 };
+
 class Sorter
 {
 public:                             //интерфейс класса для программы
@@ -51,24 +68,4 @@ private:                            //остальное
     Sorter();                       // В private чтобы нельзя было создать объект
                                     //без инициализации xls файлом
 };
-/* Ренату вставить в гуи примерной такой текст
-#include <sorter.h>
-// blablabla
-// ...
-try
-{
-// должен быть выбран файл исходник
-Sorter sorter("файл исходник"); //char*, если уж стринг то s.c_str()
-//Заполняешь структуру "Range range;" данными из спинбоксов
-sorter.fill_it(&range);
-sorter.sort_it();
-// выбирается файл куда сохранить результат
-sorter.save_to_file();
-//showmessage кутишный тип все получилось
-}
-catch (Error err)
-{
-//showmessage кутишный с текстом err.text()
-}
-*/
 #endif

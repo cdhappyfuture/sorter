@@ -1,0 +1,21 @@
+
+ Ренату вставить в гуи примерной такой текст
+#include <sorter.h>
+// blablabla
+// ...
+try
+{
+// должен быть выбран файл исходник
+Sorter sorter("файл исходник"); //char*, если уж стринг то s.c_str()
+//Заполняешь структуру "Range range;" данными из спинбоксов
+sorter.fill_it(&range);
+sorter.sort_it();
+// выбирается файл куда сохранить результат
+sorter.save_to_file();
+//showmessage кутишный тип все получилось
+}
+catch (Error err)
+{
+//showmessage кутишный с текстом err.text()
+}
+
