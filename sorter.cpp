@@ -1,5 +1,6 @@
 #include "sorter.h"
 #include <string.h>
+#include <cstdio>
 #include <algorithm>        // для std::sort(/**/)
 
 Error::Error()
@@ -13,7 +14,7 @@ Error::~Error()
 {
     delete[] mess;
 }
-void Error::text()
+char* Error::text()
 {
     return mess;
 }
@@ -25,7 +26,7 @@ Sorter::Sorter(char* filename)
     range = NULL;                   // потом можно было проверить что диапазон еще не задан
     rows.reserve(100);              // чтобы быстрее работало, не много памяти съест
     book.Load(filename);
-    sheet = book.GetWorkSheet(0);
+    sheet = book.GetWorksheet(0);
 }
 
 bool Sorter::in_range(Row& row)
@@ -44,26 +45,77 @@ bool Sorter::in_range(Row& row)
     return 0;
 }
 
+
+struct Date 
+{
+    int y;
+    int m;
+    int d;
+};
+
+Date* DaysToDate(int days)
+{//принимает количество дней и возвращает дату в виде строки
+    Date* date = new Date;
+    date->m = 0;
+    const int BEGIN = 1900;
+    int dm[][12] = {{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+        {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+    date->y = days*4 / (static_cast<int>(365.25*4));                                         //количество лет в полученом периоде
+    int usegod = (date->y % 4 ? 0 : 1);                               //если год вясокосный то 0 иначе 1
+    date->d = days - date->y*365 - date->y/4 - usegod;                        //количество дней в неполном году
+    while (date->d > dm[usegod][date->m])                               //пока полный месяц
+        date->d -= dm[usegod][date->m++];                                 //вычитаем его длину из неполного года
+    date->m++;
+    date->y += BEGIN;
+    return date;
+}
+
+char* DaysToStr(int days)
+{
+    Date* dt = DaysToDate(days);
+    char* date_str = new char[11];
+    std::sprintf(date_str, "%d.%d.%d", dt->d, dt->m, dt->y);
+    delete dt;
+    return date_str;
+}
+
+char* TimeConvert(double d_time)
+{
+    char* s_time = new char[6];
+    int h = 24 * d_time;
+    int m = (d_time / (h / 24.0)) * 24 * 60;
+    std::sprintf(s_time, "%d:%d", h, m);
+    return s_time;
+}
+
 void Sorter::fill_it(Range* r)
 {
     range = r;
-    const int C_CI = 2;                     // С Column Index
-    const int D_CI = 3;                     // C, D, K - постоянные
-    const int K_CI = 10;
-    int E_CI = sheet->GetTotalCols() - 6;   //что-то типа этого, надо тестить
-    int F_CI = E_CI + 1;                    // Начиния с E непостоянные, потомучто у
-    int GH_CI = E_CI + 2;                   // у цветного файла не фиксированное количество
-    int IL_CI = E_CI + 3;                   // столбцов, a подсчеты всегда вставляются в конец
-    int MP_CI = E_CI + 4;
-    int QT_CI = E_CI + 5;
+    // индексы стлобцов в исходном файле
+    const int date_CI = 0,
+          b_time_CI = 5,
+          e_time_CI = 6,
+          C_CI = 2,                         // С Column Index
+          D_CI = 3,                         // C, D, K ,date, b_time, e_time - постоянные
+          K_CI = 10;
+    int E_CI = sheet->GetTotalCols() - 6,   //что-то типа этого, надо тестить
+        F_CI = E_CI + 1,                    // Начиния с E непостоянные, потомучто у
+        GH_CI = E_CI + 2,                   // у цветного файла не фиксированное количество
+        IL_CI = E_CI + 3,                   // столбцов, a подсчеты всегда вставляются в конец
+        MP_CI = E_CI + 4,
+        QT_CI = E_CI + 5;
     Row cur_row;
-    char cur_date[20];
+    char* cur_date = NULL;
     int row = 1;
     while (++row != sheet->GetTotalRows())
     {
-        cell = sheet->Cell(i + 1, date_CI);
+        cell = sheet->Cell(row + 1, date_CI);
         if (cell->GetInteger())
-            strcpy(cur_date, DateConvert(cell->GetInteger()));
+        {
+            delete cur_date;
+            cur_date= DaysToStr(cell->GetInteger());
+        }
+
         else
         {
             strcpy(cur_row.date, cur_date);
@@ -98,13 +150,14 @@ void Sorter::fill_it(Range* r)
                 rows.push_back(cur_row); // Собственно, фильтрация
         }
     }
+    delete cur_date;
     if(rows.size() == 0)
         throw Error("No one row is in range!");
 }
 
-bool comp(Row r1, Row r2)
+bool comp( const Row& r1, const Row& r2)
 {
-    return (r1.E < r2.E ? 1 : (r1.F < r2.F ? 1 : (r1.GH < r2.GH ? 1 : 0 ) ) ); //неуверен что сработает
+    return r1.E < r2.E;
 }
 
 void Sorter::sort_it()
@@ -112,8 +165,9 @@ void Sorter::sort_it()
     std::sort(rows.begin(), rows.end(), comp);
 }
 
-void save_to_file(char* filename)
+void Sorter::save_to_file(char* filename)
 {
+    // индексы столбцов в новом файле
     enum {
         date_CI,
         b_time_CI,
@@ -127,7 +181,7 @@ void save_to_file(char* filename)
         IL_CI,
         MP_CI,
         QT_CI
-    }
+    };
     ExcelFormat::BasicExcel new_book;
     new_book.New(1);
     ExcelFormat::BasicExcelWorksheet* new_sheet = new_book.GetWorksheet(0);
