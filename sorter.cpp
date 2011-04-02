@@ -12,7 +12,7 @@ Error::Error(const char* m)
 }
 Error::~Error()
 {
-    delete[] mess;
+    //delete[] mess;
 }
 char* Error::text()
 {
@@ -21,7 +21,7 @@ char* Error::text()
 
 Sorter::Sorter()
 {}
-Sorter::Sorter(char* filename)
+Sorter::Sorter(const char* filename)
 {
     range = NULL;                   // потом можно было проверить что диапазон еще не задан
     rows.reserve(100);              // чтобы быстрее работало, не много памяти съест
@@ -83,7 +83,7 @@ char* TimeConvert(double d_time)
 {
     char* s_time = new char[6];
     int h = 24 * d_time;
-    int m = (d_time / (h / 24.0)) * 24 * 60;
+    int m = (d_time - (h / 24.0) + 0.00001) * 24 * 60;
     std::sprintf(s_time, "%d:%d", h, m);
     return s_time;
 }
@@ -98,7 +98,7 @@ void Sorter::fill_it(Range* r)
           C_CI = 2,                         // С Column Index
           D_CI = 3,                         // C, D, K ,date, b_time, e_time - постоянные
           K_CI = 10;
-    int E_CI = sheet->GetTotalCols() - 6,   //что-то типа этого, надо тестить
+    int E_CI = sheet->GetTotalCols() - 7,
         F_CI = E_CI + 1,                    // Начиния с E непостоянные, потомучто у
         GH_CI = E_CI + 2,                   // у цветного файла не фиксированное количество
         IL_CI = E_CI + 3,                   // столбцов, a подсчеты всегда вставляются в конец
@@ -109,21 +109,24 @@ void Sorter::fill_it(Range* r)
     int row = 1;
     while (++row != sheet->GetTotalRows())
     {
-        cell = sheet->Cell(row + 1, date_CI);
+        cell = sheet->Cell(row, date_CI);
         if (cell->GetInteger())
         {
             delete cur_date;
             cur_date= DaysToStr(cell->GetInteger());
         }
-
+        
         else
         {
+            cur_row.date = new char[strlen(cur_date)+1];
             strcpy(cur_row.date, cur_date);
             cell = sheet->Cell(row, b_time_CI);
 
             if (cell->GetDouble() == 0) 
                 break; //Если нету даты слева и данных в строке
 
+            cur_row.b_time = new char[6];
+            cur_row.e_time = new char[6];
             strcpy(cur_row.b_time, TimeConvert(cell->GetDouble()));
             cell = sheet->Cell(row, e_time_CI);
             strcpy(cur_row.e_time, TimeConvert(cell->GetDouble()));
@@ -165,7 +168,7 @@ void Sorter::sort_it()
     std::sort(rows.begin(), rows.end(), comp);
 }
 
-void Sorter::save_to_file(char* filename)
+void Sorter::save_to_file(const char* filename)
 {
     // индексы столбцов в новом файле
     enum {
@@ -213,6 +216,6 @@ void Sorter::save_to_file(char* filename)
         new_cell = new_sheet->Cell(i + 1, QT_CI);
         new_cell->Set(rows[i].QT);
     }    
-    if(!book.SaveAs(filename))
+    if(!new_book.SaveAs(filename))
         throw Error("Error while saving to file");
 }
